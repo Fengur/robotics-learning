@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人 / 具身智能 · 学习门户</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --border:#2a2f3a;
+    --ink:#e6e9ef; --ink2:#a5adba; --ink3:#6b7280;
+    --accent:#7c9cff; --accent2:#5eead4;
+    --done:#34d399; --doing:#fbbf24; --todo:#4b5563;
+    --hist:#c084fc;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.25);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f6f7f9; --panel:#ffffff; --panel2:#f0f2f5; --border:#e4e7ec;
+      --ink:#1a1d23; --ink2:#4b5563; --ink3:#8a92a0;
+      --accent:#4f6cf7; --accent2:#0ea5a3; --hist:#9333ea;
+      --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.08);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro SC","PingFang SC","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 24px 80px}
+
+  /* header */
+  header{margin-bottom:28px}
+  .kicker{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent2); font-weight:600}
+  h1{font-size:30px; margin:6px 0 8px; letter-spacing:-.01em}
+  .sub{color:var(--ink2); font-size:15px; max-width:70ch}
+  .goal{margin-top:16px; padding:14px 18px; background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent2); border-radius:10px; font-size:14px; color:var(--ink2)}
+  .goal b{color:var(--ink)}
+
+  /* progress overview */
+  .overview{display:flex; align-items:center; gap:20px; margin:26px 0 8px; flex-wrap:wrap}
+  .ring{--p:0; width:74px; height:74px; border-radius:50%;
+    background:conic-gradient(var(--done) calc(var(--p)*1%), var(--panel2) 0);
+    display:grid; place-items:center; flex:none}
+  .ring::before{content:""; width:58px; height:58px; border-radius:50%; background:var(--bg); position:absolute}
+  .ring span{position:relative; font-weight:700; font-size:18px}
+  .ring-wrap{position:relative; display:grid; place-items:center}
+  .ov-text{font-size:14px; color:var(--ink2)}
+  .ov-text b{color:var(--ink); font-size:15px}
+
+  section{margin-top:38px}
+  h2{font-size:19px; margin:0 0 4px; display:flex; align-items:center; gap:9px}
+  h2 .dot{width:8px; height:8px; border-radius:50%; background:var(--accent)}
+  .sec-sub{color:var(--ink3); font-size:13px; margin:0 0 18px}
+
+  /* timeline */
+  .timeline{position:relative; padding-left:26px}
+  .timeline::before{content:""; position:absolute; left:7px; top:6px; bottom:6px; width:2px; background:linear-gradient(var(--hist),var(--accent))}
+  .tl{position:relative; margin-bottom:16px}
+  .tl::before{content:""; position:absolute; left:-23px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--hist); border:2px solid var(--bg)}
+  .tl:last-child::before{background:var(--accent)}
+  .tl .era{font-weight:600; font-size:14px}
+  .tl .era .tag{font-size:11px; color:var(--ink3); font-weight:500; margin-left:8px}
+  .tl .desc{font-size:13px; color:var(--ink2)}
+  .tl.now .era{color:var(--accent)}
+
+  /* module cards */
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); transition:transform .15s, border-color .15s}
+  .card:hover{transform:translateY(-2px); border-color:var(--accent)}
+  .card .top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px}
+  .card .mid{font-size:12px; font-weight:700; letter-spacing:.05em; color:var(--accent2)}
+  .card h3{margin:2px 0 0; font-size:16px}
+  .badge{font-size:11px; padding:3px 9px; border-radius:20px; font-weight:600; white-space:nowrap; flex:none}
+  .b-todo{background:color-mix(in srgb,var(--todo) 25%,transparent); color:var(--ink2)}
+  .b-doing{background:color-mix(in srgb,var(--doing) 22%,transparent); color:var(--doing)}
+  .b-done{background:color-mix(in srgb,var(--done) 22%,transparent); color:var(--done)}
+  .card .learn{font-size:13px; color:var(--ink2); margin:8px 0 12px}
+  .card .ms{font-size:12.5px; color:var(--ink); background:var(--panel2); border-radius:9px; padding:9px 11px}
+  .card .ms b{color:var(--accent2); font-weight:600}
+  .card .note-link{margin-top:11px; font-size:12.5px}
+
+  /* milestones checklist */
+  .checklist{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:10px 8px; box-shadow:var(--shadow)}
+  .ck{display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:10px; cursor:pointer; transition:background .12s}
+  .ck:hover{background:var(--panel2)}
+  .ck input{appearance:none; width:20px; height:20px; border:2px solid var(--todo); border-radius:6px; flex:none; cursor:pointer; position:relative; transition:.12s}
+  .ck input:checked{background:var(--done); border-color:var(--done)}
+  .ck input:checked::after{content:"✓"; position:absolute; inset:0; display:grid; place-items:center; color:#04120c; font-size:13px; font-weight:800}
+  .ck label{cursor:pointer; font-size:14.5px; flex:1}
+  .ck input:checked + label{color:var(--ink3); text-decoration:line-through}
+  .ck .idx{font-size:11px; color:var(--ink3); font-weight:600; width:82px; flex:none}
+
+  /* files grid */
+  .files{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px}
+  .file{display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:13px 15px; box-shadow:var(--shadow); transition:border-color .15s}
+  .file:hover{border-color:var(--accent); text-decoration:none}
+  .file .ic{font-size:20px; flex:none}
+  .file .fn{font-weight:600; font-size:14px; color:var(--ink)}
+  .file .fd{font-size:12px; color:var(--ink3)}
+
+  footer{margin-top:48px; padding-top:20px; border-top:1px solid var(--border); font-size:12px; color:var(--ink3); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px}
+  .reset{background:none; border:1px solid var(--border); color:var(--ink3); border-radius:8px; padding:5px 12px; cursor:pointer; font-size:12px}
+  .reset:hover{border-color:var(--accent); color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Robotics · Embodied AI</div>
+    <h1>机器人 / 具身智能 · 学习门户</h1>
+    <p class="sub">从客户端工程出发，面向未来落地方向，扎实吃透机器人工程的工作流与储备知识。当前阶段：<b style="color:var(--ink)">打地基</b>。</p>
+    <div class="goal">
+      <b>目标</b>：建立正确心智模型（感知→规划→控制、分层异构、仿真=开发环境）· 能独立在仿真里跑通闭环 · 看懂系统每层在传什么。
+      <b>边界</b>：纯软件、零硬件采购。<b>方向锚点</b>：M3 走机械臂抓取，地基直通甜区（数据链路 + VLA）。
+    </div>
+
+    <div class="overview">
+      <div class="ring-wrap"><div class="ring" id="ring"><span id="ringpct">0%</span></div></div>
+      <div class="ov-text">
+        <b id="ovcount">0 / 5</b> 里程碑完成<br>
+        进度自动保存在本机浏览器（localStorage），勾选即存。
+      </div>
+    </div>
+  </header>
+
+  <!-- 第一部分：领域地图 -->
+  <section>
+    <h2><span class="dot"></span>一、学的是什么 · 历史演进</h2>
+    <p class="sec-sub">先建认知地图 —— 搞清"为什么现在是 ROS2 + 仿真 + 学习驱动这个组合"。详见 <a href="read.html?doc=00-领域地图.md">00-领域地图</a></p>
+    <div class="timeline">
+      <div class="tl"><div class="era">工业机器人<span class="tag">规则 / 示教编程</span></div><div class="desc">机器人学起点，纯确定性世界，无"智能"。</div></div>
+      <div class="tl"><div class="era">移动机器人<span class="tag">概率机器人学 · ROS 诞生 2007</span></div><div class="desc">开始处理"带噪声的现实"，ROS 成为中间件事实标准。</div></div>
+      <div class="tl"><div class="era">感知革命<span class="tag">深度学习进感知</span></div><div class="desc">感知从手工特征转向学习，机器人"看得懂"了。</div></div>
+      <div class="tl"><div class="era">学习控制<span class="tag">深度强化学习 + 仿真训练</span></div><div class="desc">"仿真里训策略再刷到真机"范式确立（sim2real、域随机化）。</div></div>
+      <div class="tl"><div class="era">数据驱动<span class="tag">模仿学习 / 行为克隆</span></div><div class="desc">遥操作采数据，数据成为核心壁垒 —— 我的甜区起点。</div></div>
+      <div class="tl now"><div class="era">基础模型<span class="tag">VLA · RT-2 / OpenVLA / π0</span></div><div class="desc">端到端"看+听指令→出动作"，当前前沿，接我的 AI 背景。</div></div>
+    </div>
+  </section>
+
+  <!-- 第二部分：怎么做 -->
+  <section>
+    <h2><span class="dot"></span>二、准备怎么做 · 模块路线</h2>
+    <p class="sec-sub">纯软件、Mac 起步（Docker + Ubuntu + ROS2）。进度以里程碑衡量，不锁死日期。详见 <a href="read.html?doc=01-学习路线.md">01-学习路线</a></p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <!-- 里程碑看板 -->
+  <section>
+    <h2><span class="dot"></span>里程碑看板</h2>
+    <p class="sec-sub">点击勾选，进度自动保存。每完成一个来 <a href="read.html?doc=复盘.md">复盘</a> 写一段。</p>
+    <div class="checklist" id="checklist"></div>
+  </section>
+
+  <!-- 第三部分：知识沉淀 -->
+  <section>
+    <h2><span class="dot"></span>三、知识沉淀 · 文件索引</h2>
+    <p class="sec-sub">领域地图与学习路线是活文档，随理解加深反复改；笔记边做边记。</p>
+    <div class="files">
+      <a class="file" href="read.html?doc=00-领域地图.md"><span class="ic">🗺️</span><div><div class="fn">00-领域地图</div><div class="fd">历史演进 · 范式 · 定位判断</div></div></a>
+      <a class="file" href="read.html?doc=01-学习路线.md"><span class="ic">🧭</span><div><div class="fn">01-学习路线</div><div class="fd">模块清单 · 里程碑 · 进度</div></div></a>
+      <a class="file" href="read.html?doc=notes/M0-环境搭建.md"><span class="ic">📝</span><div><div class="fn">notes/</div><div class="fd">每模块边做边记的实战笔记</div></div></a>
+      <a class="file" href="https://github.com/Fengur/robotics-learning/tree/main/demos"><span class="ic">📦</span><div><div class="fn">demos/</div><div class="fd">里程碑产出的可跑代码/工程</div></div></a>
+      <a class="file" href="read.html?doc=复盘.md"><span class="ic">🔍</span><div><div class="fn">复盘</div><div class="fd">每个里程碑：能做什么/卡在哪/下一步</div></div></a>
+    </div>
+  </section>
+
+  <footer>
+    <span>机器人学习门户 · 自包含单文件，双击即开，无需服务</span>
+    <button class="reset" onclick="resetAll()">重置进度</button>
+  </footer>
+</div>
+
+<script>
+// fengur START
+const MODULES = [
+  {id:'m0', mid:'M0', name:'世界观校准 + 环境', badge:'todo',
+   learn:'sense→plan→act 闭环、系统分层异构、仿真=开发环境；搭好 ROS2 环境。',
+   ms:'能画出分层架构说清每层职责/实时性/语言；<b>ros2</b> 命令跑通。',
+   note:'notes/M0-环境搭建.md'},
+  {id:'m1', mid:'M1', name:'ROS2 中间件（重头）', badge:'todo',
+   learn:'节点/话题/服务/动作/参数、消息与 QoS、TF2 坐标变换、bag 录制回放。',
+   ms:'手写多个节点互相通信 + 录一段 bag 回放 + 可视化 TF 树。',
+   note:null},
+  {id:'m2', mid:'M2', name:'仿真闭环', badge:'todo',
+   learn:'URDF 建模、传感器仿真、控制接口；Gazebo 入门 + MuJoCo（为 RL 铺路）。',
+   ms:'仿真里让机械臂动起来：订阅传感器、发控制指令、闭环跑通。',
+   note:null},
+  {id:'m3', mid:'M3', name:'操作栈 · 机械臂抓取', badge:'todo',
+   learn:'正/逆运动学、MoveIt 运动规划、抓取 pipeline。',
+   ms:'仿真里独立完成一次"看到物体→规划→抓取"任务。',
+   note:null},
+  {id:'m4', mid:'M4', name:'数学/控制（横切）', badge:'doing',
+   learn:'刚体运动、旋转表示（欧拉角/四元数/矩阵）、坐标变换、PID→状态空间基础。',
+   ms:'不单独立项，跟着 M1-M3 缺什么补什么，笔记里沉淀。',
+   note:null},
+];
+const MILESTONES = [
+  {id:'ms1', idx:'里程碑 1', text:'环境就绪 + 世界观校准（M0 完成）'},
+  {id:'ms2', idx:'里程碑 2', text:'ROS2 通信闭环打通，看懂节点在传什么（M1 完成）'},
+  {id:'ms3', idx:'里程碑 3', text:'仿真里让机械臂动起来（M2 完成）'},
+  {id:'ms4', idx:'里程碑 4', text:'仿真里独立完成一次抓取任务（M3 完成）'},
+  {id:'ms5', idx:'里程碑 5', text:'地基复盘——能讲清整条工作流，决定甜区分叉方向'},
+];
+const KEY='robotics-learning-progress-v1';
+const BADGE={todo:['b-todo','未开始'],doing:['b-doing','横切进行'],done:['b-done','完成']};
+
+function load(){ try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}} }
+function save(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
+
+function renderCards(){
+  document.getElementById('cards').innerHTML = MODULES.map(m=>{
+    const [cls,txt]=BADGE[m.badge];
+    const note = m.note? `<div class="note-link">📝 <a href="read.html?doc=${m.note}">笔记</a></div>` : `<div class="note-link" style="color:var(--ink3)">笔记待建</div>`;
+    return `<div class="card">
+      <div class="top"><div><div class="mid">${m.mid}</div><h3>${m.name}</h3></div>
+      <span class="badge ${cls}">${txt}</span></div>
+      <div class="learn">${m.learn}</div>
+      <div class="ms"><b>里程碑</b> ${m.ms}</div>
+      ${note}
+    </div>`;
+  }).join('');
+}
+
+function renderChecklist(){
+  const s=load();
+  document.getElementById('checklist').innerHTML = MILESTONES.map(m=>`
+    <div class="ck">
+      <input type="checkbox" id="${m.id}" ${s[m.id]?'checked':''}>
+      <span class="idx">${m.idx}</span>
+      <label for="${m.id}">${m.text}</label>
+    </div>`).join('');
+  MILESTONES.forEach(m=>{
+    document.getElementById(m.id).addEventListener('change',e=>{
+      const st=load(); st[m.id]=e.target.checked; save(st); updateRing();
+    });
+  });
+}
+
+function updateRing(){
+  const s=load();
+  const done=MILESTONES.filter(m=>s[m.id]).length;
+  const pct=Math.round(done/MILESTONES.length*100);
+  document.getElementById('ring').style.setProperty('--p',pct);
+  document.getElementById('ringpct').textContent=pct+'%';
+  document.getElementById('ovcount').textContent=`${done} / ${MILESTONES.length}`;
+}
+
+function resetAll(){ if(confirm('重置所有里程碑进度？')){ localStorage.removeItem(KEY); renderChecklist(); updateRing(); } }
+
+renderCards(); renderChecklist(); updateRing();
+// fengur END
+</script>
+</body>
+</html>
