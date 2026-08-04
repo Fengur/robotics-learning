@@ -91,23 +91,25 @@
   crumbEl.textContent = niceName;
   document.title = niceName + ' · 机器人学习';
 
-  // 深浅色跟随系统，初始化 mermaid
-  const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  if(window.mermaid){
-    mermaid.initialize({ startOnLoad:false, theme: darkMode?'dark':'default', securityLevel:'strict', flowchart:{useMaxWidth:true}, sequence:{useMaxWidth:true} });
-  }
+  // mermaid 初始化推迟到 renderMermaid 里做(CDN 可能还没到,那时初始化会漏)
+  let mermaidInited = false;
 
   fetch(encodeURI(doc))
     .then(r=>{ if(!r.ok) throw new Error(r.status); return r.text(); })
     .then(md=>{
-      if(window.marked){
-        marked.setOptions({gfm:true, breaks:false});
-        docEl.innerHTML = marked.parse(md);
-      }else{
-        docEl.innerHTML = '<pre>'+esc(md)+'</pre>';
-      }
-      hideLoading();
-      renderMermaid();
+      // 等渲染库(marked)就绪再渲染——CDN 慢/挂时保持转圈,别甩一屏生文本
+      return waitFor(()=>window.marked, 8000).then(ok=>{
+        if(ok){
+          marked.setOptions({gfm:true, breaks:false});
+          docEl.innerHTML = marked.parse(md);
+          hideLoading();
+          renderMermaid();
+        }else{
+          // 8秒还没到 = CDN 彻底加载失败,明确告知,不甩生文本
+          showErr('页面渲染库加载失败（可能是网络限制了外部 CDN）。<br><br>' +
+            '请<b>换用系统浏览器打开</b>，或稍后重试。');
+        }
+      });
     })
     .catch(e=>{
       showErr('无法加载 <code>'+doc+'</code>（'+e.message+'）。<br><br>' +
@@ -115,9 +117,28 @@
         '在线（GitHub Pages）访问一切正常；本地想读 md 直接用编辑器打开即可。');
     });
 
+  // 轮询等待条件成立,最多 timeout 毫秒;成立 resolve(true),超时 resolve(false)
+  function waitFor(cond, timeout){
+    return new Promise(resolve=>{
+      if(cond()){ resolve(true); return; }
+      const start = Date.now();
+      const t = setInterval(()=>{
+        if(cond()){ clearInterval(t); resolve(true); }
+        else if(Date.now()-start > timeout){ clearInterval(t); resolve(false); }
+      }, 100);
+    });
+  }
+
   // 把 marked 生成的 ```mermaid 代码块转成 mermaid 容器再渲染
-  function renderMermaid(){
-    if(!window.mermaid) return;
+  async function renderMermaid(){
+    // mermaid 可能比 marked 晚到,给它 6 秒机会;超时就跳过(正文已在,不阻塞)
+    const ready = await waitFor(()=>window.mermaid, 6000);
+    if(!ready) return;
+    if(!mermaidInited){
+      const dm = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad:false, theme: dm?'dark':'default', securityLevel:'strict', flowchart:{useMaxWidth:true}, sequence:{useMaxWidth:true} });
+      mermaidInited = true;
+    }
     const blocks = docEl.querySelectorAll('pre > code.language-mermaid, pre > code.lang-mermaid');
     blocks.forEach(code=>{
       const div = document.createElement('div');
